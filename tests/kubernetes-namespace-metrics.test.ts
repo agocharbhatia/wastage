@@ -19,8 +19,6 @@ elif [[ "$*" == *".resources.requests.nvidia"* ]]; then
     printf '%s' "$FAKE_GPU_REQUESTS"
 elif [[ "$*" == "get pods -n $FAKE_EXPECTED_NAMESPACE -o json" ]]; then
     printf '{}\\n'
-elif [[ "$*" == "get pods --all-namespaces -o json" ]]; then
-    printf '{}\\n'
 elif [[ "$*" == "top pods $FAKE_METRICS_SCOPE --no-headers" ]]; then
     printf '%s' "$FAKE_METRICS"
 elif [[ "$*" == "top nodes --no-headers" ]]; then
@@ -160,7 +158,11 @@ describe('Kubernetes namespace metrics parsing', () => {
 
 	it('keeps same-named pods from different namespaces separate in a cluster-wide scan', () => {
 		const first = onePodRows('team-a', 'worker', true);
-		const second = onePodRows('team-b', 'worker', true);
+		const second = {
+			metrics: 'team-b worker 500m 256Mi\n',
+			requests: 'team-b\tworker\t1000m\t1024Mi\n',
+			gpuRequests: 'team-b/worker\t0\n'
+		};
 		const report = scanReport({
 			scope: 'cluster',
 			contextNamespace: '',
@@ -173,10 +175,10 @@ describe('Kubernetes namespace metrics parsing', () => {
 
 		expect(report).toMatchObject({
 			job_count: 2,
-			avg_cpu_waste_pct: 80,
-			avg_mem_waste_pct: 50,
-			utilisation_score: 32,
-			total_estimated_cost_usd: 58.4
+			avg_cpu_waste_pct: 60,
+			avg_mem_waste_pct: 62.5,
+			utilisation_score: 39,
+			total_estimated_cost_usd: 65.7
 		});
 	});
 });
